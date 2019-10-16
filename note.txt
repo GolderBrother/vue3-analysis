@@ -1,0 +1,158 @@
+﻿从零手写Vue3.0响应式源码
+
+composition的功能，所有的方法都为函数
+
+compiler-core
+compiler-dom
+runtime-dom
+
+编译模板
+核心API
+
+VUE3.0源码 https://github.com/vuejs/vue-next
+
+Vue2.0 如何实现响应式原理
+数据变化了，可以更新视图
+
+使用Object.defineProperty 就是可以重新给对象的属性定义 getter和setter
+
+更新后的值可能是个新对象，因此需要对这个新对象设置响应式
+
+vue2监测不到数组元素的变化
+
+原理是内部再调用数组的原生方法
+
+函数劫持
+把函数进行重写，内部继续调用老的方法
+
+切片编程
+这三个方法一样的？
+
+Object.setPrototypeOf(target, proto);
+target.__proto__ = proto;
+target = Object.create(proto);
+
+Vue3.0 原理
+
+引入
+vue.global.js
+
+vue2的缺陷
+(1)默认会递归
+(2)数组改变length是无效的
+(3)对象不存在的属性不能被拦截(监听)
+
+Proxy相比Object.defineProperty好处：
+(1)对象不存在的属性可以被拦截
+
+target代表原对象，key代表属性名，receiver代表代理后的对象,就是new出来那个Proxy 实例
+
+proxy获取值，reflect设置值
+Reflect.set(target, key, value, receiver)
+相当于下面的，如果这个对象不可以被更改(writable:false),就会报错
+target[key] = value;
+
+函数才有原型protoytype
+
+reflect有点：不会报错，而且会有返回值(重要)，会替换掉Object上的方法
+
+取值的时候，如果是个对象再递归，设置属性(也是个对象)响应式
+object.name.n = 'z'
+
+object.name触发了get函数，再.n = 'z' ,赋值后({n:'z'})就相当于是个对象{name:{n:'z'}}
+
+WeakMap // 弱引用映射表 es6, 键值是弱引用，会主动被垃圾回收机制回收
+原对象:代理对象
+
+如果已经代理过了，就将代理过的结果返回即可
+防止代理过的对象再次被代理
+
+mdn每个api都过一遍，很重要！！
+
+Proxy缺点：
+兼容性差，IE11不兼容
+
+toProxy 弱引用的对象
+toRaw 被代理过的对象:原对象
+
+解决原对象被代理多次
+
+怎么识别是改属性还是新增属性
+判断对象以前有没有这个key
+target.hasOwnProperty(key)
+没有就是新增，否则就是修改属性
+
+为了屏蔽无意义的修改
+let oldValue = target[key]
+if(oldValue !== value) {
+	console.log('修改属性')
+}
+
+依赖收集 发布订阅
+
+栈：先进后出
+响应式 副作用
+effect 会执行两次，默认先执行一次，之后依赖的数据变化了，会再次执行
+effect(()=> {
+    console.log(obj.name)
+})
+
+effect(fn)
+需要把fn这个函数变成响应式的函数
+
+vue2 利用了js是单线程的
+
+收集依赖 订阅 把当前的key 和 这个effect 对应起来
+
+track(target, key);
+如果目标上的这个key变化了，重新让数组中的effect执行
+
+有对应关系，才创建关联
+
+WeakSet: {Map:{key:{Set:{effect}}}}
+
+watch里面调用的是effect
+
+try{
+    // 即使这里面报错了
+}finally{
+    // 这里面的代码也会执行
+}
+
+数据结构：集合和hash表
+
+ref computed
+ref:把基本类型进行包装
+computed也是基于effect
+
+
+怎么看源码：
+
+reactivity
+
+需要debugger;
+然后浏览器单步调试
+
+打开源码映射，方便源码调试
+tsconfig.js
+sourceMap: true
+
+调试ts代码
+rollip.config.js文件
+output.sourceMap = true
+
+IE11:
+没有polyfilll, Proxy+defineProperty才行
+
+react fiber
+
+vue3借鉴了react的思想，但是比useMemo和useRef好，因为Vue3.0数据没变就不会渲染视图
+
+Vue3.0是针对功能写代码(函数式变成)，以前是针对api写代码
+
+11.2开新班
+
+昨天的公开课录播在线观看地址：https://www.bilibili.com/video/av71129642/	
+
+
+
