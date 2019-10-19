@@ -26,7 +26,7 @@ function observer(target){
    
 }
 function defineReactive(target,key,value){
-    observer(value); // 递归 我就将这个对象 继续拦截
+    observer(value); // 递归，如果属性值是个对象，我就将这个对象 继续拦截
     Object.defineProperty(target,key,{
         get(){ // get 中会进行依赖收集
             return value 

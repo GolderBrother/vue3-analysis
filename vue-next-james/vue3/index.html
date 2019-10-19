@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>vue3-demo</title>
+</head>
+<body>
+    <h2>vue3-demo</h2>
+    <!-- 相当于vue2的app节点 -->
+    <div id="container"></div>
+    <script src="./vue.global.js"></script>
+    <script>
+        function usePosition(){
+            let position = Vue.reactive({x: 0, y: 0});
+            function update(e) {
+                position.x = e.pageX;
+                position.y = e.pageY;
+            }
+            // 相当于Vue2.0中的生命周期钩子:mounted
+            Vue.onMounted(()=> {
+                window.addEventListener('mousemove', update);
+            })
+            // 相当于Vue2.0中的生命周期钩子:beforeDestroy
+            Vue.onUnmounted(()=> {
+                window.removeEventListener('mousemove', update);
+            })
+            return position;
+        }
+        const App = {
+            setup(){ // 相当于 vue2.0的created生命周期
+                const state = Vue.reactive({name: "james"})
+                let position = usePosition();
+                function change(){
+                    state.name = "golderBrother"
+                }
+                return {  // 返回执行上下文
+                    state,
+                    position,
+                    change
+                }
+            },
+            template: `<div @click="change">
+                name: {{state.name}}
+                x: {{position.x}}
+                y: {{position.y}}        
+            </div>`
+        }
+        // 将App组件挂载到container节点中
+        Vue.createApp().mount(App, container);
+
+    </script>
+</body>
+</html>

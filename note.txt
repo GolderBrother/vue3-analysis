@@ -26,7 +26,7 @@ vue2监测不到数组元素的变化
 把函数进行重写，内部继续调用老的方法
 
 切片编程
-这三个方法一样的？
+这三个方法一样的
 
 Object.setPrototypeOf(target, proto);
 target.__proto__ = proto;
@@ -153,6 +153,199 @@ Vue3.0是针对功能写代码(函数式变成)，以前是针对api写代码
 11.2开新班
 
 昨天的公开课录播在线观看地址：https://www.bilibili.com/video/av71129642/	
+
+
+2019.10.17
+从零实现Vue3.0响应式源码(正式版)
+视频学习
+https://www.bilibili.com/video/av71129642/
+
+composition API 多个方法进行组合来使用的
+Vue 3 使用ts实现了类型推断，新版api全部采用函数式写法
+
+通过rollup来构建，不是通过webpack的
+
+源码目录
+vue：入口目录
+
+index.spec.ts:单元测试文件
+
+vue/dist/index.html
+
+将App组件挂载到id为container的DOM节点中
+Vue.createApp().mount(App, "container")
+
+setup(){  -> 相当于created，只会执行一次
+    // 核心API，创建响应式对象
+    let state = Vue.reactive({name: 'zf'});
+    console.log(state);
+    function change(){
+	state.name = 'jw'
+    }
+    return { // 这个对象会作为渲染的上下文
+	state
+    },
+    template: '<div @click="">{{ state.name }}</div>'
+}
+
+Vue.onMounted(() => {
+
+})
+
+Vue.onUnmounted(() => {
+
+})
+
+Vue.toRefs -> {x: {value}}
+将基础类型包装成引用类型
+Vue.toRefs({x: 1, y: 2})
+
+packages
+
+shared:共享方法
+template-explorer:模板解析器
+
+runtime-core:运行时的核心
+里面存放核心的api
+
+runtime-dom:浏览器解析相关
+
+runtime-test:测试环境专用
+将节点转换成对象，方便用户基于平台写测试用例
+
+vue：
+用来整合compiler-xxx(编译时)和runtime-xxx(运行时)
+编译模板
+编译API
+
+vue2.0原理：
+1. vue2.0.js
+每个包都有__test__，用来测试当前包的
+
+vue2 会一直递归
+
+新的值可能是个对象(更新了引用地址，就响应式对象了)，也需要包装成响应式的，否则后面的更新不能触发set函数
+
+数组的push方法不能被观察
+不能覆盖原型的方法，因为这样做后没有响应式的数组也更新了
+
+Object.create() // 继承
+创建一个实例，操作实例不会影响老的
+
+函数劫持：把函数进行重写，内部继续调用老的方法
+updateView(); // 切片编程
+
+拦截数组：在get中进行依赖收集，给数组的方法进行了重写
+
+vue3.0原理：
+Vue.effect：副作用
+默认会执行一次
+当依赖的数据变化后再执行一次，重新渲染视图
+
+Vue2.0缺点：
+(1)默认会递归对象，无论多少层都会递归。性能不高
+(2)数组改变length是无效的(不是响应式的，不能监听到)
+(3)对象新增的属性不能被拦截
+
+Proxy
+target表示源对象
+get(target, key, receiver) {
+	proxy + reflect(反射)
+	打你 + 反射
+
+	let result = Reflect.get(target, key, receiver)
+	return result
+}
+
+receiver就是代理后(proxy)的新对象
+
+set(target, key, value, receiver) {
+   // 返回是否设置成功的结果
+   let res = Reflect.set(target, key, value, receiver);
+   // set方法必须有返回值
+   return res;
+}
+
+seleteProperty(target, key) {
+	let res = Reflect.deleteProperty(target, key)
+	return res;
+}
+
+// 不能遍历symbol
+Object.getOwnPropertyDescriptor()
+
+3.0取值的时候(触发get函数)再返回代理后的对象。实现递归
+比Vue2.0好在，有必要才递归，而不是一开始就递归
+get(){
+    return isObject(result) ? reactive(result) : result; // 是个递归
+}
+
+object.name.age = 18
+相当于 先object.name取值后，再object.name.age = 18给name赋值
+这边相当于将name对象设置成响应式的
+
+hash表 映射表
+
+let toProxy = new WeakMap(); // 若引用映射表 放置的是 原对象
+let toRaw = new WeakMap(); //
+
+如果已经代理过了，就将代理过的结果直接返回即可
+
+防止代理过的对象再次被代理
+
+Proxy缺点：
+兼容性差，IE11不兼容
+
+WeakMap
+没引用的时候，会被垃圾回收机制自动回收
+
+arr.push(4)
+新增了4
+并且数组的长度也变了
+
+这样就调用了两次set方法，相当于更新了两次视图
+
+判断是新增还是修改
+判断这个key存不存在，存在就是修改，不存在就是更新
+
+为了屏蔽，无意义的修改
+oldValue !== value
+
+重头戏：
+依赖收集 发布订阅：
+
+栈：先进后出
+响应式，副作用
+
+需要把fn这个函数变成响应式的函数
+let effect = createReactiveEffect(fn)
+effect() // 默认先执行一次
+
+effect 这个就是创建响应式的effect
+让fn执行，第二个就是把这个effect存到栈中
+
+运行fn，并且将effect存起来
+
+利用获取的属性名(key) 跟 effect函数对应起来，只要这个target的key对应的值变了，就让key对应数组中的effect执行就行了
+
+WeakMap -> key -> object -> value -> Map(value) -> key ->  Set(value)
+
+watch里面调用的也是effect
+
+先入栈(push)
+在让fn执行
+再弹栈(pop)
+
+将当前key对应的所有effect遍历执行
+trigger(target, type, key) {
+    
+}
+
+WeakMap：集合和hash表
+
+已看完，需要结合代码再复习一遍
+
+
 
 
 

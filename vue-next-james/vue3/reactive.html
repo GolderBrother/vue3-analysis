@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>vue3-reactive</title>
+</head>
+<body>
+    <h1>vue3-reactive</h1>
+    <script src="./vue.global.js"></script>
+    <script>
+        // console.log(Vue)
+        // vue3.0将对象包装成响应式对象
+        const proxy = Vue.reactive({name: 'james'});
+        // 副作用
+        // 默认先执行一次，之后依赖的数据变化了，会再次执行
+        Vue.effect(() => {
+            console.log(proxy.name)
+        })
+        proxy.name = 'golderBrother';
+    </script>
+</body>
+</html>
