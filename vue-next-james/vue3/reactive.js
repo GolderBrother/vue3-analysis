@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Description: vue3创建响应式对象的方法实现 
  * @Author: james.zhang 
  * @Date: 2019-10-18 22:32:35 
@@ -11,6 +11,9 @@ const hasOwnProperty = (target, key) => target.hasOwnProperty(key)
 const toProxy = new WeakMap(); // 弱引用映射表,如果没有被引用，垃圾回收期会自动将其回收。存放的是 源对象:代理后的对象
 const toRaw = new WeakMap(); // 弱引用映射表,如果没有被引用，垃圾回收期会自动将其回收。存放的是 代理后的对象：源对象
 
+正反缓存:
+obj: observed
+observed: obj
 
 function reactive(target){
     return createReactiveObject(target)
@@ -28,13 +31,11 @@ function createReactiveObject(target){
     let raw = toRaw.has(target) 
     if(raw) return target;
 
-    
-
     let baseHandle = {
         get(target, key, receiver){
             // console.log('get', key)
-
             let result = Reflect.get(target, key, receiver);
+			track(target, key);
             return isObject(result) ? reactive(result) : result;
         },
         set(target, key, value, receiver){
@@ -48,11 +49,13 @@ function createReactiveObject(target){
                 console.log('update', value)
             }
             let result = Reflect.set(target, key, value, receiver);
+			trigger(target, key);
             return result;
         },
         deleteProperty(target, key){
             // console.log('delete', key)
             let result = Reflect.deleteProperty(target, key);
+			trigger(target, key);
             return result
         }
     }
@@ -76,12 +79,13 @@ function track(target, key){
     let effect = activeEffectStacks[activeEffectStacks.length - 1];
     // 有对应关系 才创建关联 数据结构关系
     // WeakMap -> key(object):value(map) -> map -> key:value(set) -> set -> value(arr)
+	
     // 有副作用函数才进行
     if(effect) {
-        let depsMap = targetMap.get();
-        if(!depsMap) targetMap.set(key, depsMap = new Map);
+        let depsMap = targetMap.get(target);
+        if(!depsMap) targetMap.set(key, depsMap = new Map());
         let depsSet = depsMap.get(key);
-        if(!depsSet) depsMap.set(key, depsSet = new Set)
+        if(!depsSet) depsMap.set(key, depsSet = new Set())
         // 动态创建依赖关系
         if(!depsSet.has(effect)) depsSet.add(effect)
     }
@@ -130,9 +134,6 @@ effect(() => { // effect 会执行两次 ,默认先执行一次 之后依赖的�
     console.log(reactiveObj.name); // 会调用get方法
 })
 reactiveObj.name = 'golderBrother'
-
-
-
 
 // let reactiveObj = reactive({name: 'james'});
 // reactiveObj.name; // get name
